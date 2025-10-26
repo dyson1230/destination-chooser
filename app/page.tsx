@@ -68,10 +68,7 @@ export default function Page() {
   const current = useMemo(() => destinations.find(d => d.key === active)!, [active]);
 
   const openExternal = (url: string) => {
-    const w = window.open(url, "_blank", "noopener,noreferrer");
-    if (!w || w.closed || typeof w.closed === "undefined") {
-      window.location.href = url;
-    }
+    window.open(url, "_blank", "noopener,noreferrer"); 
   };
 
   const mapUrl = (name: string, city: string) =>
