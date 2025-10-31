@@ -1,141 +1,258 @@
-"use client";
-import { useMemo, useState } from "react";
-import { Globe2 } from "lucide-react";
+import React from "react";
 
-export default function Page() {
-  const destinations = [
+// One-file React page for your Newcastle & Hunter Valley trip.
+// Design goals (已按你的要求实现):
+// 1) 无站内锚点跳转；2) 不嵌入地图；3) 仅提供在新标签页打开的外链 (target="_blank" rel="noopener noreferrer").
+// Tailwind 优雅排版，卡片式布局，信息一目了然。
+
+const SectionTitle: React.FC<{ title: string; subtitle?: string }>=({ title, subtitle })=> (
+  <div className="flex flex-col gap-1 mb-4">
+    <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">{title}</h2>
+    {subtitle && <p className="text-sm md:text-base text-neutral-600">{subtitle}</p>}
+  </div>
+);
+
+const ExtLink: React.FC<{ href: string; children: React.ReactNode }>=({ href, children })=> (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-neutral-200 shadow-sm hover:shadow transition text-sm"
+  >
+    <span className="truncate max-w-[18ch] md:max-w-none">{children}</span>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 opacity-70"><path d="M14 3h7v7h-2V6.414l-9.293 9.293-1.414-1.414L17.586 5H14V3z"/><path d="M5 5h6v2H7v10h10v-4h2v6H5z"/></svg>
+  </a>
+);
+
+const Card: React.FC<{ title: string; note?: string; right?: React.ReactNode; children?: React.ReactNode }>=({ title, note, right, children })=> (
+  <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm p-4 flex flex-col gap-2">
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <h3 className="text-lg font-semibold leading-tight">{title}</h3>
+        {note && <p className="text-neutral-600 text-sm mt-1">{note}</p>}
+      </div>
+      {right}
+    </div>
+    {children && <div className="text-sm text-neutral-700 leading-relaxed">{children}</div>}
+  </div>
+);
+
+export default function TripPage(){
+  const newcastleAttractions = [
     {
-      key: "newcastle",
-      display: "Newcastle",
-      cover: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=60",
-      activities: [
-        { name: "Don't Jump 悬崖", desc: "海边悬崖拍照点 · 注意安全" },
-        { name: "Merewether Ocean Baths 海边游泳池", desc: "海滨泳池 · 《楚门的世界》小门取景风格" },
-        { name: "Sand Dune Adventure 沙漠四驱车", desc: "穿越沙丘/海滩/沉船/二战遗址 · 1小时 A$119 · 1.5小时 A$150", link: "https://sandduneadventures.com.au/" },
-        { name: "Oakfield Ranch 海边骑骆驼", desc: "20分钟 A$45 · 日落 1小时 A$120", link: "https://www.oakfieldranch.com.au/" }
-      ],
-      dining: [
-        { name: "Shoal Bay Country Club", desc: "招牌蟹黄面 · 35-45 Shoal Bay Rd, Shoal Bay NSW", link: "https://www.shoalbaycountryclub.com.au/" },
-        { name: "Hao Chi / Lee's Kitchen 中餐", desc: "326 King St, Newcastle NSW", link: "https://leeskitchen.com.au/" }
-      ]
+      title: "Merewether Ocean Baths | 海边游泳池",
+      note: "可顺带打卡：‘楚门的世界’小门",
+      link: null as string | null,
+      details: "免费公共海水泳池，风景极佳。",
     },
     {
-      key: "brisbane",
-      display: "Brisbane",
-      cover: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=1600&q=60",
-      activities: [
-        { name: "Lone Pine 考拉园", desc: "抱考拉 · 喂袋鼠", link: "https://lonepinekoalasanctuary.com/" },
-        { name: "Currumbin Wildlife Sanctuary", desc: "黄金海岸动物园", link: "https://currumbinsanctuary.com.au/" },
-        { name: "华纳兄弟电影世界 Movie World", desc: "主题乐园 · 门票约 A$109", link: "https://movieworld.com.au/" },
-        { name: "Tropical Fruit World", desc: "热带水果园 · 门票约 A$68", link: "https://www.tropicalfruitworld.com.au/" },
-        { name: "Queensland Museum", desc: "昆州博物馆", link: "https://www.museum.qld.gov.au/kurilpa" },
-        { name: "Gallery of Modern Art", desc: "现代美术馆", link: "https://www.qagoma.qld.gov.au/" },
-        { name: "Story Bridge", desc: "故事大桥" }
-      ],
-      dining: []
+      title: "Sand Dune Adventures | 沙漠四驱车",
+      note: "路线含沙漠/海滩/沉船/二战遗址 | 10:00 仅一场，或 13:00/14:00 不同时长",
+      link: "https://sandduneadventures.com.au/",
+      details: "约1小时¥119 或 1.5小时AU$150（以官站为准）",
     },
     {
-      key: "hunter",
-      display: "Hunter Valley",
-      cover: "https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&fit=crop&w=1600&q=60",
-      activities: [
-        { name: "Starline Alpacas 羊驼农场", desc: "$15 · 1100 Milbrodale Rd, Broke", link: "https://starlinealpacas.com.au/" },
-        { name: "Hunter Valley Chocolate Company", desc: "巧克力工厂 · 2320 Broke Rd, Pokolbin", link: "https://www.hvchocolate.com.au/" },
-        { name: "Hunter Valley Cheese Factory", desc: "芝士工厂 · 447 McDonalds Rd, Pokolbin", link: "https://huntervalleycheese.com.au/" },
-        { name: "BARE Nature'sKin 手工香皂", desc: "500 Wollombi Rd, Broke", link: "https://barenatureskin.com.au/" },
-        { name: "Peterson House", desc: "气泡酒 + Gelato · 2457 Broke Rd, Pokolbin", link: "https://petersonhouse.com.au/" },
-        { name: "Brokenwood Wines", desc: "401-427 McDonalds Rd, Pokolbin", link: "https://www.brokenwood.com.au/" },
-        { name: "Audrey Wilkinson Winery", desc: "750 De Beyers Rd, Pokolbin", link: "https://audreywilkinson.com.au/" },
-        { name: "Bimbadgen", desc: "790 McDonalds Rd, Pokolbin", link: "https://www.bimbadgen.com.au/" },
-        { name: "McGuigan Wines", desc: "C/2144 Broke Rd, Pokolbin", link: "https://www.mcguiganwines.com.au/" },
-        { name: "Tulloch Wines", desc: "638 De Beyers Rd, Pokolbin", link: "https://www.tullochwines.com/" },
-        { name: "Mount Pleasant", desc: "401 Marrowbone Rd, Pokolbin", link: "https://www.mountpleasantwines.com.au/" },
-        { name: "Piggs Peake", desc: "697 Hermitage Rd, Pokolbin", link: "https://piggspeake.com/" },
-        { name: "Pokolbin Cider House", desc: "2342 Broke Rd, Pokolbin", link: "https://www.pokolbinciderhouse.com.au/" }
-      ],
-      dining: [
-        { name: "Baumé Pizza", desc: "119 McDonalds Rd, Pokolbin", link: "https://www.benean.com.au/services/baume-restaurant/" },
-        { name: "Café Enzo", desc: "1946 Broke Rd, Pokolbin", link: "https://www.enzohuntervalley.com.au/cafe" },
-        { name: "The Italian Cottage", desc: "109 Wollombi Rd, Cessnock", link: "https://theitaliancottage.com.au/" },
-        { name: "EXP.", desc: "2188 Broke Rd, Pokolbin", link: "https://www.exprestaurant.com.au/" },
-        { name: "Cocoa Nib", desc: "989 Hermitage Rd, Pokolbin", link: "https://www.cocoanib.com.au/" },
-        { name: "Sabor Dessert Bar", desc: "2342 Broke Rd, Pokolbin", link: "https://www.sabordessertbar.com.au/" }
-      ]
-    }
+      title: "Oakfield Ranch Camel Rides | 海边骑骆驼",
+      note: "$45 | ~20分钟 | 周三休息 | 10:00–15:30",
+      link: "https://www.oakfieldranch.com.au/",
+      details: "热门海滩骆驼体验，现场视天气而定。",
+    },
   ];
 
-  const [active, setActive] = useState("newcastle");
-  const current = useMemo(() => destinations.find(d => d.key === active)!, [active]);
+  const newcastleEats = [
+    {
+      title: "Shoal Bay Country Club",
+      note: "蟹黄面 | 35–45 Shoal Bay Rd, Shoal Bay NSW 2315",
+      link: "https://www.shoalbaycountryclub.com.au/",
+    },
+    {
+      title: "Lee’s Kitchen (Hao Chi) | 好吃中餐",
+      note: "326 King St, Newcastle NSW 2300",
+      link: "https://leeskitchen.com.au/",
+    },
+  ];
 
-  const openExternal = (url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer"); 
-  };
+  const hvAttractions = [
+    {
+      title: "Starline Alpacas | 羊驼农场",
+      note: "$15 | Mon–Thu 10–4, Fri–Sat 9–5, Sun 9–3 | 1100 Milbrodale Rd, Broke",
+      link: "https://starlinealpacas.com.au/",
+    },
+    {
+      title: "Hunter Valley Chocolate Company | 巧克力工厂",
+      note: "9–5 | 2320 Broke Rd, Pokolbin",
+      link: "https://www.hvchocolate.com.au/",
+    },
+    {
+      title: "Hunter Valley Cheese Factory | 芝士工厂",
+      note: "9–5:30 | next to Brokenwood | 447 McDonalds Rd, Pokolbin",
+      link: "https://huntervalleycheese.com.au/",
+    },
+    {
+      title: "BARE Nature’sKin | 手工香皂店",
+      note: "500 Wollombi Rd, Broke",
+      link: "https://barenatureskin.com.au/",
+    },
+    {
+      title: "Go Karts Go | 卡丁车",
+      note: "13分钟 AU$37.5",
+      link: "https://gokartsgo.com.au/hunter-valley/",
+    },
+    {
+      title: "Hunter Valley Wildlife Park | 动物园",
+      note: "AU$44 | 9–3",
+      link: "https://huntervalleywildlifepark.com.au/",
+    },
+    {
+      title: "Aqua Golf | 水上高尔夫",
+      note: "Hunter Valley Gardens 场内",
+      link: "https://www.huntervalleygardens.com.au/location/aqua-golf-putt-putt/#pricing",
+    },
+  ];
 
-  const mapUrl = (name: string, city: string) =>
-    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + " " + city)}`;
+  const wineries = [
+    {
+      title: "Peterson House | 配Gelato的气泡酒",
+      note: "2457 Broke Rd, Pokolbin | 8号: 10/12/14点; 9号: 10/11/12/14/15点; 10号: 10/11/12/13/14/15点 | 45分钟 AU$35",
+      link: "https://petersonhouse.com.au/",
+    },
+    { title: "Brokenwood | 7款品鉴$25；配小吃$75", link: "https://www.brokenwood.com.au/", note: "401–427 McDonalds Rd, Pokolbin" },
+    { title: "Audrey Wilkinson | 经典$15；好座$20；甜品巧克力$60；老酒$40", link: "https://audreywilkinson.com.au/", note: "750 De Beyers Rd, Pokolbin" },
+    { title: "Bimbadgen | 经典$15；年份优选$25", link: "https://www.bimbadgen.com.au/", note: "790 McDonalds Rd, Pokolbin" },
+    { title: "McGuigan Wines | 标准$10；高级$20；配巧克力$15", link: "https://www.mcguiganwines.com.au/", note: "Pavilion, C/2144 Broke Rd, Pokolbin" },
+    { title: "Tulloch | 小吃$45；芝士$53；手工巧克力$35", link: "https://www.tullochwines.com/", note: "638 De Beyers Rd, Pokolbin" },
+    { title: "Mount Pleasant | 橄榄脆饼$25；+奶酪$40", link: "https://www.mountpleasantwines.com.au/", note: "401 Marrowbone Rd, Pokolbin" },
+    { title: "Piggs Peake | $32", link: "https://piggspeake.com/", note: "697 Hermitage Rd, Pokolbin" },
+    { title: "Pokolbin Cider House | $40 含小吃拼盘", link: "https://www.pokolbinciderhouse.com.au/", note: "2342 Broke Rd, Pokolbin" },
+  ];
 
-  const fallbackCover = "https://images.unsplash.com/photo-1541921671-1553c948f990?auto=format&fit=crop&w=1600&q=60";
+  const hvEats = [
+    { title: "Baumé (Pizza)", link: "https://www.benean.com.au/services/baume-restaurant/", note: "119 McDonalds Rd, Pokolbin" },
+    { title: "Café Enzo", link: "https://www.enzohuntervalley.com.au/cafe", note: "1946 Broke Rd, Pokolbin" },
+    { title: "The Italian Cottage", link: "https://theitaliancottage.com.au/", note: "109 Wollombi Rd, Cessnock" },
+    { title: "EXP.", link: "https://www.exprestaurant.com.au/", note: "2188 Broke Rd, Pokolbin" },
+    { title: "Cocoa Nib", link: "https://www.cocoanib.com.au/", note: "989 Hermitage Rd, Pokolbin" },
+    { title: "Sabor Dessert Bar", link: "https://www.sabordessertbar.com.au/", note: "2342 Broke Rd, Pokolbin" },
+    { title: "Oishii (Japanese & Thai)", link: "https://www.oishii.com.au/", note: "2144 Broke Rd, Pokolbin" },
+    { title: "Muse", link: "https://www.musedining.com.au/", note: "2450 Broke Rd, Pokolbin" },
+  ];
+
+  const plan = [
+    {
+      day: "7号 (Day 1)",
+      items: [
+        "悉尼 → 纽卡斯尔 (约2小时10分)",
+        "午饭",
+        "海边骑骆驼 (~1小时)",
+        "‘楚门的世界’ 打卡 (~1小时)",
+        "入住 Airbnb",
+      ],
+    },
+    {
+      day: "8号 (Day 2)",
+      items: [
+        "沙漠四驱车",
+        "前往猎人谷 (约1小时)",
+        "巧克力工厂",
+        "酒庄",
+      ],
+    },
+    {
+      day: "9号 (Day 3)",
+      items: ["羊驼农场", "手工香皂店", "卡丁车 / 水上高尔夫", "酒庄"],
+    },
+    {
+      day: "10号 (Day 4)",
+      items: ["野生动物园", "芝士工厂", "酒庄"],
+    },
+    {
+      day: "11号 (Day 5)",
+      items: ["返程"],
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      <header className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow">
-        <div className="mx-auto max-w-7xl px-6 py-5 flex items-center gap-3">
-          <Globe2 className="w-6 h-6" />
-          <h1 className="text-xl md:text-2xl font-bold">目的地选择 · Destination Chooser</h1>
-        </div>
-      </header>
+      <div className="mx-auto max-w-6xl px-4 py-8 md:py-12">
+        {/* Header */}
+        <header className="flex flex-col gap-4 mb-8">
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight">Newcastle & Hunter Valley 行程页
+            <span className="block text-base md:text-lg font-normal text-neutral-600 mt-2">Bilingual Trip Page · 双语行程页</span>
+          </h1>
+          <p className="text-neutral-700 max-w-3xl">
+            所有外部链接均在<strong>新标签</strong>打开；本页<strong>不</strong>含站内跳转或地图嵌入。价格/营业时间可能随季节调整，请以官网为准。
+          </p>
+        </header>
 
-      <section className="mx-auto max-w-7xl px-6 py-6 grid md:grid-cols-3 gap-4">
-        {destinations.map(d => (
-          <button
-            key={d.key}
-            onClick={() => setActive(d.key)}
-            className={`p-4 rounded-2xl border hover:shadow transition ${active === d.key ? 'border-black' : ''}`}
-          >
-            <div className="font-semibold">{d.display}</div>
-          </button>
-        ))}
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6">
-        <div className="relative overflow-hidden rounded-3xl">
-          <img src={current.cover} alt={current.display} className="w-full h-56 md:h-80 object-cover" onError={(e) => { const img = e.currentTarget as HTMLImageElement; if (img.src !== fallbackCover) img.src = fallbackCover; }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/0" />
-          <div className="absolute bottom-0 left-0 p-5 md:p-8 text-white">
-            <div className="text-2xl md:text-3xl font-bold drop-shadow-sm">{current.display}</div>
+        {/* Newcastle */}
+        <section className="mb-10">
+          <SectionTitle title="Newcastle | 纽卡斯尔" subtitle="Attractions · 游玩" />
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {newcastleAttractions.map((a, idx)=> (
+              <Card key={idx} title={a.title} note={a.note} right={a.link && <ExtLink href={a.link}>官网 / Website</ExtLink>}>
+                {a.details}
+              </Card>
+            ))}
           </div>
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-7xl px-6 mt-6 grid md:grid-cols-5 gap-6">
-        <div className="md:col-span-3 space-y-4">
-          <h2 className="text-lg font-semibold">活动 Activities</h2>
-          {current.activities.map((a, i) => (
-            <div key={i} className="p-4 bg-white rounded-2xl shadow">
-              <div className="font-medium">{a.name}</div>
-              <div className="text-sm opacity-80 mt-1">{a.desc}</div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="px-3 py-1 rounded-xl border text-sm hover:bg-blue-50" onClick={() => openExternal(mapUrl(a.name, current.display))}>地图 / Map</button>
-                {a.link && <button className="px-3 py-1 rounded-xl border text-sm hover:bg-blue-50" onClick={() => openExternal(a.link!)}>官网 / Website</button>}
-              </div>
+          <div className="mt-6">
+            <SectionTitle title="Food & Drink | 餐饮" />
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {newcastleEats.map((e, idx)=> (
+                <Card key={idx} title={e.title} note={e.note} right={<ExtLink href={e.link}>官网 / Website</ExtLink>} />
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="md:col-span-2 space-y-4">
-          <h2 className="text-lg font-semibold">餐饮 Dining</h2>
-          {current.dining.map((a, i) => (
-            <div key={i} className="p-4 bg-white rounded-2xl shadow">
-              <div className="font-medium">{a.name}</div>
-              <div className="text-sm opacity-80 mt-1">{a.desc}</div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button className="px-3 py-1 rounded-xl border text-sm hover:bg-blue-50" onClick={() => openExternal(mapUrl(a.name, current.display))}>地图 / Map</button>
-                {a.link && <button className="px-3 py-1 rounded-xl border text-sm hover:bg-blue-50" onClick={() => openExternal(a.link!)}>官网 / Website</button>}
-              </div>
+          </div>
+        </section>
+
+        {/* Hunter Valley */}
+        <section className="mb-10">
+          <SectionTitle title="Hunter Valley | 猎人谷" subtitle="Attractions · 游玩" />
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {hvAttractions.map((a, idx)=> (
+              <Card key={idx} title={a.title} note={a.note} right={<ExtLink href={a.link}>官网 / Website</ExtLink>} />
+            ))}
+          </div>
+
+          <div className="mt-6">
+            <SectionTitle title="Wineries & Cider | 酒庄/苹果酒" />
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {wineries.map((w, idx)=> (
+                <Card key={idx} title={w.title} note={w.note} right={<ExtLink href={w.link}>预订 / Book</ExtLink>} />
+              ))}
             </div>
-          ))}
-          {current.dining.length === 0 && <div className="text-sm opacity-70">暂未添加餐厅，可把清单发我我立即补上。</div>}
-        </div>
-      </section>
+          </div>
+
+          <div className="mt-6">
+            <SectionTitle title="Food & Dessert | 餐饮/甜点" />
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {hvEats.map((e, idx)=> (
+                <Card key={idx} title={e.title} note={e.note} right={<ExtLink href={e.link}>官网 / Website</ExtLink>} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Plan */}
+        <section className="mb-12">
+          <SectionTitle title="Itinerary | 总体行程 (7–11号)" />
+          <div className="grid md:grid-cols-2 gap-4">
+            {plan.map((d)=> (
+              <div key={d.day} className="rounded-2xl border border-neutral-200 bg-white shadow-sm p-4">
+                <h3 className="text-lg font-semibold mb-2">{d.day}</h3>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  {d.items.map((it, i)=> <li key={i}>{it}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="text-xs text-neutral-500">
+          <p>温馨提示：价格、开放时间与可预订时段可能变动，出行前请点开相应官网确认。</p>
+        </footer>
+      </div>
     </div>
   );
 }
